@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Leaflet Draw</title>
+	<meta charset="utf-8">
+	 <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+
+    <!-- Load Leaflet from CDN -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css"
+    integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
+    crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"
+    integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg=="
+    crossorigin=""></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.pm@latest/dist/leaflet.pm.css" />
+    <script src="https://unpkg.com/leaflet.pm@latest/dist/leaflet.pm.min.js"></script>
+
+<style type="text/css">
+	    body { margin:0; padding:0; }
+    #mapid { position: absolute; top:0; bottom:0; right:0; left:0; }
+</style>
+
+</head>
+<body>
+<div id="mapid"></div>
+
+</body>
+
+<script type="text/javascript">
+
+  var mymap = L.map('mapid').setView([-20.76125, -44.28316], 5);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(mymap);
+
+  //L.marker(item.latlng, {pmIgnore: true}).addTo(mymap);
+
+  mymap.pm.addControls({
+  	position: 'topleft',
+  	editMode: true,
+  });
+
+ mymap.on('pm:create', (e) => {
+ 	console.log(e.layer._latlngs);
+ });
+
+
+
+
+</script>
+
+
+</html>
