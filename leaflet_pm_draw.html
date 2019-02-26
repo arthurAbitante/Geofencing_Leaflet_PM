@@ -15,7 +15,11 @@
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet.pm@latest/dist/leaflet.pm.css" />
     <script src="https://unpkg.com/leaflet.pm@latest/dist/leaflet.pm.min.js"></script>
+    <!--biblioteca para checar distancia entre pontos de latitudes e longitudes-->
+    <script src="https://cdn.rawgit.com/hayeswise/Leaflet.PointInPolygon/v1.0.0/wise-leaflet-pip.js"></script>
 
+    <!--Biblioteca Leaflet 3D-->
+    <script src="http://www.webglearth.com/v2/api.js"></script>
 <style type="text/css">
 	    body { margin:0; padding:0; }
     #mapid { position: absolute; top:0; bottom:0; right:0; left:0; }
@@ -31,20 +35,269 @@
 
   var mymap = L.map('mapid').setView([-20.76125, -44.28316], 5);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(mymap);
+  L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mymap);
+ // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+   // attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+  //}).addTo(mymap);
 
   //L.marker(item.latlng, {pmIgnore: true}).addTo(mymap);
 
   mymap.pm.addControls({
   	position: 'topleft',
   	editMode: true,
+    drawPolyline: false
+
   });
 
- mymap.on('pm:create', (e) => {
- 	console.log(e.layer._latlngs);
+ 
+  var marker;
+  var group;
+  var shape;
+  var allShapes;
+
+  var shapeGroup = new Array();
+
+  var valuesShape = new Array();
+
+  var rectangle = new Array();
+  var polygon = new Array();
+  var circle = new Array();
+  var line = new Array();
+
+
+//checar parameto no circulo
+  L.Circle.include({
+  contains: function (latLng) {
+    return this.getLatLng().distanceTo(latLng) < this.getRadius();
+  }
+});
+
+ mymap.pm.globalRemovalEnabled();
+ mymap.pm.Draw.Cut.enable({
+    allowSelfIntersection: false
  });
+
+ var coordsPolygon = function(coords){
+    this.coords = coords;
+
+ };
+ var coordsRectangle = function(coords){
+    this.coords = coords;
+ };
+ var coordsCircle = function(coords){
+    this.coords = coords;
+ };
+
+//FUNCAO REMOVER
+mymap.on('pm:remove', (re) => {
+  if(shape === 'rectangle'){
+      rectangle = [];
+   //   console.log(re.layer.getBounds());
+  }
+  if(shape === 'polygon'){
+      polygon = [];
+  }
+  if(shape === 'circle'){
+      valuesShape = [];
+  }
+//  console.log(re);
+});
+
+
+
+//----------------------------QUANDO CORTAR
+mymap.on('pm:cut', (c) => {
+
+  console.log(c.layer);
+  var result = c.layer._leaflet_id - 1;
+  console.log(typeof(c.layer._leaflet_id ));
+
+  if(shape === 'rectangle'){
+    rectangle = [];
+    shape = 'polygon';
+     
+  }
+  polygon = [];
+  for(var i = 0; i < c.layer._layers[result]._latlngs[0].length; i++){
+    polygon.push([c.layer._layers[result]._latlngs[0][i].lat, c.layer._layers[result]._latlngs[0][i].lng]);
+  }
+});
+
+
+
+ mymap.on('pm:create', (e) => {
+  console.log(e);
+
+    //retangulo
+    if(e.shape === 'Rectangle'){
+      shape = 'rectangle';
+
+      for(var i = 0; i < e.layer._latlngs[0].length; i++){
+        rectangle.push([e.layer._latlngs[0][i].lat, e.layer._latlngs[0][i].lng]);
+      }
+      //coordsRectangle(rectangle);
+
+      shapeGroup =  new L.FeatureGroup();
+      mymap.addLayer(shapeGroup);
+      //QUANDO EDITAR
+        e.layer.on('pm:edit', (ed) => {
+          rectangle = [];
+          for(var i = 0; i < ed.target._latlngs[0].length; i++){
+            rectangle.push([ed.target._latlngs[0][i].lat, ed.target._latlngs[0][i].lng]);
+          }
+        })
+
+
+//---------------------------------------------QUANDO ARRASTAR
+        e.layer.on('pm:dragend', (de) => {
+
+          rectangle = [];
+
+          for(var i = 0; i < de.target._latlngs[0].length; i++){
+            rectangle.push([de.target._latlngs[0][i].lat, de.target._latlngs[0][i].lng]);
+          }
+          //console.log(sd);
+        });
+//----------------------------QUANDO CORTAR
+
+        
+
+
+
+    //poligono
+    }else if(e.shape === 'Poly'){
+
+    shape = 'polygon';
+    for(var i = 0; i < e.layer._latlngs[0].length; i++){
+      polygon.push([e.layer._latlngs[0][i].lat, e.layer._latlngs[0][i].lng]);
+    }
+    shapeGroup += polygon;
+    //quando editar
+      e.layer.on('pm:edit', (ed) => {
+
+        polygon = [];
+        for(var i = 0; i < ed.target._latlngs[0].length; i++){
+          polygon.push([ed.target._latlngs[0][i].lat, ed.target._latlngs[0][i].lng]);
+        }  
+      
+      })
+
+      //---------------------------------QUANDO ARRASTAR
+        e.layer.on('pm:dragend', (de) => {
+
+          polygon = [];
+
+          for(var i = 0; i < de.target._latlngs[0].length; i++){
+            polygon.push([de.target._latlngs[0][i].lat, de.target._latlngs[0][i].lng]);
+          }
+          //console.log(sd);
+        });
+
+        //----------------------------QUANDO CORTAR
+
+
+
+
+  }else if(e.shape === 'Circle'){
+    shape = 'circle';
+    valuesShape = L.circle([e.layer._latlng.lat, e.layer._latlng.lng], e.layer._mRadius);
+
+
+    e.layer.on('pm:edit', (ed) => {
+      valuesShape = [];
+      valuesShape = L.circle([ed.target._latlng.lat, ed.target._latlng.lng], ed.target._mRadius);
+      shapeGroup += valuesShape;
+     // valuesShape = ;
+    })
+    
+    e.layer.on('pm:dragend', (sd) => {
+
+      valuesShape = [];
+      valuesShape = L.circle([de.target._latlng.lat, de.target._latlng.lng], de.target._mRadius);
+
+          //console.log(sd);
+    });
+
+//----------------------------QUANDO CORTAR
+
+
+
+
+  }else if(e.shape === 'Marker'){
+    marker = L.marker([e.layer._latlng.lat, e.layer._latlng.lng]).addTo(mymap);
+//    group = L.featureGroup(marker);
+//    console.log(group);
+
+      if(shape === 'rectangle'){
+        if(rectangle.length === 0){
+          
+          console.log("Vazio");
+        }else{
+          rectangleFence();
+        }
+
+    //                     
+        
+      }
+      if(shape === 'circle'){
+        if(valuesShape.length === 0){
+          console.log("Vazio");
+        }else{
+          circleFence();
+        }
+      }
+      if(shape === 'polygon'){
+        if(polygon.length === 0){  
+          console.log("Vazio");
+        }else{
+          polygonFence();
+        }
+      }
+ //     allShapes = L.layerGroup(shapeGroup);
+
+  }else{
+    alert("Não há forma");
+  }
+
+
+ });
+
+
+
+function rectangleFence(){
+
+    valuesShape = L.rectangle(rectangle);
+    var valueFence = valuesShape.contains(marker.getLatLng());
+    if(valueFence === false){
+        alert("Está fora da cerca");
+    }
+  
+
+}
+
+function circleFence(){
+
+
+    var valueFence = valuesShape.contains(marker.getLatLng());
+    if(valueFence === false){
+        alert("Está fora da cerca");
+    }
+
+  
+  //  console.log(valuesShape.contains(marker.getLatLng()));
+
+}
+
+function polygonFence(){
+
+    valuesShape = L.polygon(polygon);
+    var valueFence = valuesShape.contains(marker.getLatLng());
+    if(valueFence === false){
+        alert("Está fora da cerca");
+    }
+  
+
+}
 
 
 
