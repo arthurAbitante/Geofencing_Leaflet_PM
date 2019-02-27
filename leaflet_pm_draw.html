@@ -53,12 +53,19 @@
   var marker;
   var group;
   var shape;
-  var allShapes;
+  var allShapes = {
+      length: 0,
+      addElem: function addElem(elem){
+        [].push.call(this, elem);
+      }
+  };
 
   var shapeGroup = new Array();
 
-  var valuesShape = new Array();
+  var valuesShape = {};
 
+
+  var valueFence = new Array();
   var rectangle = new Array();
   var polygon = new Array();
   var circle = new Array();
@@ -77,16 +84,7 @@
     allowSelfIntersection: false
  });
 
- var coordsPolygon = function(coords){
-    this.coords = coords;
 
- };
- var coordsRectangle = function(coords){
-    this.coords = coords;
- };
- var coordsCircle = function(coords){
-    this.coords = coords;
- };
 
 //FUNCAO REMOVER
 mymap.on('pm:remove', (re) => {
@@ -132,13 +130,35 @@ mymap.on('pm:cut', (c) => {
     if(e.shape === 'Rectangle'){
       shape = 'rectangle';
 
+ 
+    
       for(var i = 0; i < e.layer._latlngs[0].length; i++){
-        rectangle.push([e.layer._latlngs[0][i].lat, e.layer._latlngs[0][i].lng]);
-      }
-      //coordsRectangle(rectangle);
 
-      shapeGroup =  new L.FeatureGroup();
-      mymap.addLayer(shapeGroup);
+
+        rectangle.push([e.layer._latlngs[0][i].lat, e.layer._latlngs[0][i].lng]); 
+ //       
+        if(rectangle.length >= e.layer._latlngs[0].length){
+          valuesShape = L.rectangle(rectangle);
+          allShapes.addElem(valuesShape);
+          rectangle = [];
+        }
+      }
+
+
+      console.log(rectangle);
+
+      console.log(valuesShape);
+
+   //   console.log(allShapes.length);
+      console.log(allShapes);
+  /*for(var i = 0; i < allShapes.length; i++){
+      console.log(allShapes[i]);
+    }*/
+      //coordsRectangle(rectangle);
+//      shapeGroup =  new L.FeatureGroup();
+  //    mymap.addLayer(shapeGroup);
+
+
       //QUANDO EDITAR
         e.layer.on('pm:edit', (ed) => {
           rectangle = [];
@@ -210,7 +230,7 @@ mymap.on('pm:cut', (c) => {
      // valuesShape = ;
     })
     
-    e.layer.on('pm:dragend', (sd) => {
+    e.layer.on('pm:dragend', (de) => {
 
       valuesShape = [];
       valuesShape = L.circle([de.target._latlng.lat, de.target._latlng.lng], de.target._mRadius);
@@ -229,16 +249,16 @@ mymap.on('pm:cut', (c) => {
 //    console.log(group);
 
       if(shape === 'rectangle'){
-        if(rectangle.length === 0){
+ //       if(rectangle.length === 0){
           
-          console.log("Vazio");
-        }else{
+   //       console.log("Vazio");
+     //   }else{
           rectangleFence();
         }
 
     //                     
         
-      }
+  //    }
       if(shape === 'circle'){
         if(valuesShape.length === 0){
           console.log("Vazio");
@@ -266,12 +286,24 @@ mymap.on('pm:cut', (c) => {
 
 function rectangleFence(){
 
-    valuesShape = L.rectangle(rectangle);
-    var valueFence = valuesShape.contains(marker.getLatLng());
-    if(valueFence === false){
-        alert("Está fora da cerca");
+  var outFence = 0;
+
+//    console.log(Object.values(valuesShape));
+//    console.log(typeof(valuesShape));
+  for(var i = 0; i < allShapes.length; i++){
+    var valueFences = allShapes[i].contains(marker.getLatLng());
+    
+    if(valueFences === false){
+      outFence = outFence + 1;
     }
-  
+    console.log(valueFences);
+  }
+
+  if(outFence === allShapes.length){
+    alert('Está fora da cerca');
+  }
+
+  console.log(outFence);
 
 }
 
