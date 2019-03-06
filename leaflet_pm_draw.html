@@ -55,22 +55,41 @@
   var shape;
   var allShapes = {
       length: 0,
+      id: new Array(),
+
       addElem: function addElem(elem){
         [].push.call(this, elem);
+      },
+    
+      updateElem: function update(elem){
+     //   [].splice.call(1, i);
+        [].splice.call(this.id, 1, elem);
+
+        //someArray.splice(x, 1);
+      },
+      removeElem: function removeElem(elem){
+        [].splice.call(this.id, 1);
+      },
+
+
+      idShape: function idShape(elem){
+        this.id.push(elem);
+
       }
+
+
+
   };
 
   var shapeGroup = new Array();
 
   var valuesShape = {};
-
+  var idShape = new Array();
 
   var valueFence = new Array();
   var rectangle = new Array();
   var polygon = new Array();
   var circle = new Array();
-  var line = new Array();
-
 
 //checar parameto no circulo
   L.Circle.include({
@@ -88,10 +107,41 @@
 
 //FUNCAO REMOVER
 mymap.on('pm:remove', (re) => {
+   console.log(re.layer._leaflet_id);
+   console.log(idShape);
+
+
+/*
+   for(i in idShape){
+    console.log(i);
+   }
+*/
+
+ // for(i in allShapes){
+ //   console.log(allShapes[i]);
+ // }//
+
+  for(i in allShapes){
+
+    if(allShapes.id[i] === re.layer._leaflet_id){
+//removeElem();
+ //     allShapes.slice(0, i).concat(allShapes.slice(i + 1, allShapes.length));
+      delete allShapes[i];
+      delete allShapes.id;
+      console.log(allShapes);
+      console.log(allShapes.id[i]);
+    }
+
+  }
+
+
+/*
   if(shape === 'rectangle'){
       rectangle = [];
    //   console.log(re.layer.getBounds());
   }
+*/
+
   if(shape === 'polygon'){
       polygon = [];
   }
@@ -106,9 +156,9 @@ mymap.on('pm:remove', (re) => {
 //----------------------------QUANDO CORTAR
 mymap.on('pm:cut', (c) => {
 
-  console.log(c.layer);
+  //console.log(c.layer);
   var result = c.layer._leaflet_id - 1;
-  console.log(typeof(c.layer._leaflet_id ));
+ // console.log(typeof(c.layer._leaflet_id ));
 
   if(shape === 'rectangle'){
     rectangle = [];
@@ -124,13 +174,13 @@ mymap.on('pm:cut', (c) => {
 
 
  mymap.on('pm:create', (e) => {
-  console.log(e);
-
+//  idShape.push(e.layer._leaflet_id);
+  //console.log(allShapes);
     //retangulo
     if(e.shape === 'Rectangle'){
       shape = 'rectangle';
 
- 
+    console.log(allShapes);
     
       for(var i = 0; i < e.layer._latlngs[0].length; i++){
 
@@ -140,37 +190,35 @@ mymap.on('pm:cut', (c) => {
         if(rectangle.length >= e.layer._latlngs[0].length){
           valuesShape = L.rectangle(rectangle);
           allShapes.addElem(valuesShape);
+          allShapes.idShape(e.layer._leaflet_id);
           rectangle = [];
+
         }
       }
-
-
-      console.log(rectangle);
-
-      console.log(valuesShape);
-
-   //   console.log(allShapes.length);
-      console.log(allShapes);
-  /*for(var i = 0; i < allShapes.length; i++){
-      console.log(allShapes[i]);
-    }*/
-      //coordsRectangle(rectangle);
-//      shapeGroup =  new L.FeatureGroup();
-  //    mymap.addLayer(shapeGroup);
-
-
       //QUANDO EDITAR
         e.layer.on('pm:edit', (ed) => {
-          rectangle = [];
-          for(var i = 0; i < ed.target._latlngs[0].length; i++){
-            rectangle.push([ed.target._latlngs[0][i].lat, ed.target._latlngs[0][i].lng]);
-          }
-        })
+          console.log(ed.target._leaflet_id);
+        //  console.log(allShapes.length);
+     
+         // if(allShapes.id === j)
 
+          for(var j = 0; j < allShapes.length; j++){
+            console.log(allShapes[j]);
+
+          }  
+            
+
+          for(var i = 0; i < ed.target._latlngs[0].length; i++){
+
+
+            allShapes.updateElem(allShapes.id, 1 , [ed.target._latlngs[0][i].lat, ed.target._latlngs[0][i].lng]);
+          } 
+  
+        });
 
 //---------------------------------------------QUANDO ARRASTAR
         e.layer.on('pm:dragend', (de) => {
-
+          console.log(de.target._leaflet_id);
           rectangle = [];
 
           for(var i = 0; i < de.target._latlngs[0].length; i++){
@@ -178,20 +226,23 @@ mymap.on('pm:cut', (c) => {
           }
           //console.log(sd);
         });
-//----------------------------QUANDO CORTAR
-
-        
-
 
 
     //poligono
     }else if(e.shape === 'Poly'){
-
+         console.log(allShapes);
     shape = 'polygon';
     for(var i = 0; i < e.layer._latlngs[0].length; i++){
       polygon.push([e.layer._latlngs[0][i].lat, e.layer._latlngs[0][i].lng]);
+      if(polygon.length >= e.layer._latlngs[0].length){
+        valuesShape = L.polygon(polygon);
+        allShapes.addElem(valuesShape);
+        allShapes.idShape(e.layer._leaflet_id);
+        polygon = [];
+      }
+
     }
-    shapeGroup += polygon;
+
     //quando editar
       e.layer.on('pm:edit', (ed) => {
 
@@ -210,18 +261,15 @@ mymap.on('pm:cut', (c) => {
           for(var i = 0; i < de.target._latlngs[0].length; i++){
             polygon.push([de.target._latlngs[0][i].lat, de.target._latlngs[0][i].lng]);
           }
-          //console.log(sd);
+
         });
 
-        //----------------------------QUANDO CORTAR
-
-
-
-
   }else if(e.shape === 'Circle'){
+    console.log(allShapes);
     shape = 'circle';
     valuesShape = L.circle([e.layer._latlng.lat, e.layer._latlng.lng], e.layer._mRadius);
-
+    allShapes.addElem(valuesShape);
+    allShapes.idShape(e.layer._leaflet_id);
 
     e.layer.on('pm:edit', (ed) => {
       valuesShape = [];
@@ -235,45 +283,13 @@ mymap.on('pm:cut', (c) => {
       valuesShape = [];
       valuesShape = L.circle([de.target._latlng.lat, de.target._latlng.lng], de.target._mRadius);
 
-          //console.log(sd);
     });
-
-//----------------------------QUANDO CORTAR
-
-
 
 
   }else if(e.shape === 'Marker'){
     marker = L.marker([e.layer._latlng.lat, e.layer._latlng.lng]).addTo(mymap);
-//    group = L.featureGroup(marker);
-//    console.log(group);
-
-      if(shape === 'rectangle'){
- //       if(rectangle.length === 0){
-          
-   //       console.log("Vazio");
-     //   }else{
-          rectangleFence();
-        }
-
-    //                     
-        
-  //    }
-      if(shape === 'circle'){
-        if(valuesShape.length === 0){
-          console.log("Vazio");
-        }else{
-          circleFence();
-        }
-      }
-      if(shape === 'polygon'){
-        if(polygon.length === 0){  
-          console.log("Vazio");
-        }else{
-          polygonFence();
-        }
-      }
- //     allShapes = L.layerGroup(shapeGroup);
+    
+    allFences();
 
   }else{
     alert("Não há forma");
@@ -283,53 +299,27 @@ mymap.on('pm:cut', (c) => {
  });
 
 
-
-function rectangleFence(){
+function allFences(){
 
   var outFence = 0;
-
-//    console.log(Object.values(valuesShape));
-//    console.log(typeof(valuesShape));
+//foreach
   for(var i = 0; i < allShapes.length; i++){
     var valueFences = allShapes[i].contains(marker.getLatLng());
     
     if(valueFences === false){
       outFence = outFence + 1;
     }
-    console.log(valueFences);
+ //   console.log(valueFences);
   }
 
   if(outFence === allShapes.length){
     alert('Está fora da cerca');
   }
 
-  console.log(outFence);
-
+ // console.log(outFence);
 }
 
-function circleFence(){
 
-
-    var valueFence = valuesShape.contains(marker.getLatLng());
-    if(valueFence === false){
-        alert("Está fora da cerca");
-    }
-
-  
-  //  console.log(valuesShape.contains(marker.getLatLng()));
-
-}
-
-function polygonFence(){
-
-    valuesShape = L.polygon(polygon);
-    var valueFence = valuesShape.contains(marker.getLatLng());
-    if(valueFence === false){
-        alert("Está fora da cerca");
-    }
-  
-
-}
 
 
 
