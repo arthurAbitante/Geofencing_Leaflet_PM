@@ -108,8 +108,6 @@
 //FUNCAO REMOVER
 mymap.on('pm:remove', (re) => {
    console.log(re.layer._leaflet_id);
-   console.log(idShape);
-
 
 /*
    for(i in idShape){
@@ -124,16 +122,14 @@ mymap.on('pm:remove', (re) => {
   for(i in allShapes){
 
     if(allShapes.id[i] === re.layer._leaflet_id){
-//removeElem();
- //     allShapes.slice(0, i).concat(allShapes.slice(i + 1, allShapes.length));
-      delete allShapes[i];
-      delete allShapes.id;
+
+     // delete allShapes[i];
+     // delete allShapes.id;
+      allShapes.removeElem(re.layer._latlng);
       console.log(allShapes);
-      console.log(allShapes.id[i]);
     }
 
   }
-
 
 /*
   if(shape === 'rectangle'){
@@ -148,17 +144,13 @@ mymap.on('pm:remove', (re) => {
   if(shape === 'circle'){
       valuesShape = [];
   }
-//  console.log(re);
 });
 
 
 
 //----------------------------QUANDO CORTAR
 mymap.on('pm:cut', (c) => {
-
-  //console.log(c.layer);
   var result = c.layer._leaflet_id - 1;
- // console.log(typeof(c.layer._leaflet_id ));
 
   if(shape === 'rectangle'){
     rectangle = [];
@@ -174,95 +166,74 @@ mymap.on('pm:cut', (c) => {
 
 
  mymap.on('pm:create', (e) => {
-//  idShape.push(e.layer._leaflet_id);
-  //console.log(allShapes);
-    //retangulo
     if(e.shape === 'Rectangle'){
       shape = 'rectangle';
 
-    console.log(allShapes);
+      console.log(allShapes);
     
       for(var i = 0; i < e.layer._latlngs[0].length; i++){
-
-
         rectangle.push([e.layer._latlngs[0][i].lat, e.layer._latlngs[0][i].lng]); 
- //       
+
         if(rectangle.length >= e.layer._latlngs[0].length){
           valuesShape = L.rectangle(rectangle);
           allShapes.addElem(valuesShape);
           allShapes.idShape(e.layer._leaflet_id);
           rectangle = [];
-
         }
       }
       //QUANDO EDITAR
-        e.layer.on('pm:edit', (ed) => {
-          console.log(ed.target._leaflet_id);
-        //  console.log(allShapes.length);
+      e.layer.on('pm:edit', (ed) => {
+        console.log(ed.target._leaflet_id);
      
-         // if(allShapes.id === j)
-
-          for(var j = 0; j < allShapes.length; j++){
+        for(var j = 0; j < allShapes.length; j++){
             console.log(allShapes[j]);
-
-          }  
+        }  
             
-
-          for(var i = 0; i < ed.target._latlngs[0].length; i++){
-
-
-            allShapes.updateElem(allShapes.id, 1 , [ed.target._latlngs[0][i].lat, ed.target._latlngs[0][i].lng]);
-          } 
-  
-        });
+        for(var i = 0; i < ed.target._latlngs[0].length; i++){
+          allShapes.updateElem(allShapes.id, 1 , [ed.target._latlngs[0][i].lat, ed.target._latlngs[0][i].lng]);
+        } 
+      });
 
 //---------------------------------------------QUANDO ARRASTAR
-        e.layer.on('pm:dragend', (de) => {
-          console.log(de.target._leaflet_id);
-          rectangle = [];
+      e.layer.on('pm:dragend', (de) => {
+        console.log(de.target._leaflet_id);
+        rectangle = [];
 
-          for(var i = 0; i < de.target._latlngs[0].length; i++){
-            rectangle.push([de.target._latlngs[0][i].lat, de.target._latlngs[0][i].lng]);
-          }
-          //console.log(sd);
-        });
-
+        for(var i = 0; i < de.target._latlngs[0].length; i++){
+          rectangle.push([de.target._latlngs[0][i].lat, de.target._latlngs[0][i].lng]);
+        }
+       });
 
     //poligono
     }else if(e.shape === 'Poly'){
-         console.log(allShapes);
-    shape = 'polygon';
-    for(var i = 0; i < e.layer._latlngs[0].length; i++){
-      polygon.push([e.layer._latlngs[0][i].lat, e.layer._latlngs[0][i].lng]);
-      if(polygon.length >= e.layer._latlngs[0].length){
-        valuesShape = L.polygon(polygon);
-        allShapes.addElem(valuesShape);
-        allShapes.idShape(e.layer._leaflet_id);
-        polygon = [];
+      shape = 'polygon';
+      for(var i = 0; i < e.layer._latlngs[0].length; i++){
+        polygon.push([e.layer._latlngs[0][i].lat, e.layer._latlngs[0][i].lng]);
+        if(polygon.length >= e.layer._latlngs[0].length){
+          valuesShape = L.polygon(polygon);
+          allShapes.addElem(valuesShape);
+          allShapes.idShape(e.layer._leaflet_id);
+          polygon = [];
+        }
       }
 
-    }
-
-    //quando editar
+      //quando editar
       e.layer.on('pm:edit', (ed) => {
-
         polygon = [];
         for(var i = 0; i < ed.target._latlngs[0].length; i++){
           polygon.push([ed.target._latlngs[0][i].lat, ed.target._latlngs[0][i].lng]);
         }  
       
-      })
+      });
 
       //---------------------------------QUANDO ARRASTAR
-        e.layer.on('pm:dragend', (de) => {
+      e.layer.on('pm:dragend', (de) => {
+        polygon = [];
 
-          polygon = [];
-
-          for(var i = 0; i < de.target._latlngs[0].length; i++){
-            polygon.push([de.target._latlngs[0][i].lat, de.target._latlngs[0][i].lng]);
-          }
-
-        });
+        for(var i = 0; i < de.target._latlngs[0].length; i++){
+          polygon.push([de.target._latlngs[0][i].lat, de.target._latlngs[0][i].lng]);
+        }
+      });
 
   }else if(e.shape === 'Circle'){
     console.log(allShapes);
@@ -275,48 +246,39 @@ mymap.on('pm:cut', (c) => {
       valuesShape = [];
       valuesShape = L.circle([ed.target._latlng.lat, ed.target._latlng.lng], ed.target._mRadius);
       shapeGroup += valuesShape;
-     // valuesShape = ;
-    })
+    });
     
     e.layer.on('pm:dragend', (de) => {
-
       valuesShape = [];
       valuesShape = L.circle([de.target._latlng.lat, de.target._latlng.lng], de.target._mRadius);
-
     });
-
 
   }else if(e.shape === 'Marker'){
     marker = L.marker([e.layer._latlng.lat, e.layer._latlng.lng]).addTo(mymap);
     
     allFences();
-
+    console.log(allShapes);
   }else{
     alert("Não há forma");
   }
-
-
- });
+});
 
 
 function allFences(){
-
   var outFence = 0;
-//foreach
+  //foreach
   for(var i = 0; i < allShapes.length; i++){
     var valueFences = allShapes[i].contains(marker.getLatLng());
     
     if(valueFences === false){
       outFence = outFence + 1;
     }
- //   console.log(valueFences);
   }
 
   if(outFence === allShapes.length){
     alert('Está fora da cerca');
   }
 
- // console.log(outFence);
 }
 
 
