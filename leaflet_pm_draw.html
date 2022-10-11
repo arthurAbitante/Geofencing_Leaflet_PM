@@ -70,20 +70,22 @@
       idShape: function idShape(elem){
         this.id.push(elem);
       }
-
-
-
   };
 
-  var shapeGroup = new Array();
-
+  //representa o valor das formas
   var valuesShape = {};
+  //representa o id da forma
   var idShape = new Array();
-
+  //representa se está dentro ou fora da cerca
   var valueFence = new Array();
+  //representa a forma retangular
   var rectangle = new Array();
+  //representa a forma poligonal que é adaptada para varias formas
   var polygon = new Array();
+  //representa o circulo
   var circle = new Array();
+
+  //precisará da representação do CircleMarker semelhante ao circulo
 
 //checar parameto no circulo
   L.Circle.include({
@@ -97,30 +99,16 @@
     allowSelfIntersection: false
  });
 
-
-
 //FUNCAO REMOVER
 mymap.on('pm:remove', (re) => {
-   console.log(re.layer._leaflet_id);
+  console.log(re.layer._leaflet_id);
 
-
-  //for(i in allShapes){
-
-  //  if(allShapes.id[i] === re.layer._leaflet_id){
-
-      allShapes.removeElem(re.layer._latlng);
-      console.log(allShapes);
-    //}
-
-  //}
-
-/*
+  allShapes.removeElem(re.layer._latlng);
+  //Aqui verifica qual é o tipo de forma que foi adicionada e depois limpa o array
+  //porém como está sendo adaptado para multiplas formas, então tera que ser reajustado.
   if(shape === 'rectangle'){
       rectangle = [];
-   //   console.log(re.layer.getBounds());
   }
-*/
-
   if(shape === 'polygon'){
       polygon = [];
   }
@@ -128,8 +116,6 @@ mymap.on('pm:remove', (re) => {
       valuesShape = [];
   }
 });
-
-
 
 //----------------------------QUANDO CORTAR
 mymap.on('pm:cut', (c) => {
@@ -171,17 +157,20 @@ mymap.on('pm:cut', (c) => {
       }
       //QUANDO EDITAR
       e.layer.on('pm:edit', (ed) => {
-        console.log(ed.target._leaflet_id);
-     
+       // console.log(ed.target._leaflet_id);
+       // console.log(ed.target._latlngs);
       //  for(var j = 0; j < allShapes.length; j++){
         //    console.log(allShapes[j]);
        // }  
         var indexValue = allShapes.id.indexOf(ed.target._leaflet_id);
         console.log("Valor do indice: " + indexValue);
-        //allShapes.updateElem();
-    //    for(var i = 0; i < ed.target._latlngs[0].length; i++){
-      //    allShapes.updateElem(allShapes.id, 1 , [ed.target._latlngs[0][i].lat, ed.target._latlngs[0][i].lng]);
-        //} 
+        allShapes.elements[indexValue]._latlngs[0] = [];
+        console.log(allShapes.elements[indexValue]._latlngs[0]);
+        allShapes.elements[indexValue]._latlngs[0] = ed.target._latlngs[0];
+        console.log(allShapes.elements[indexValue]._latlngs[0]);
+        //ele edita porem nao funciona corretamente
+
+
       });
 
 //---------------------------------------------QUANDO ARRASTAR
@@ -225,19 +214,22 @@ mymap.on('pm:cut', (c) => {
         }
       });
 
+  //a forma do circulo é diferente de outros para ser checado a cerca dele
+  //
   }else if(e.shape === 'Circle'){
-    console.log(allShapes);
     shape = 'circle';
+
     valuesShape = L.circle([e.layer._latlng.lat, e.layer._latlng.lng], e.layer._mRadius);
     allShapes.addElem(valuesShape);
     allShapes.idShape(e.layer._leaflet_id);
 
+    //vai ser preciso adicionar no array de allShapes em updateElem
     e.layer.on('pm:edit', (ed) => {
       valuesShape = [];
       valuesShape = L.circle([ed.target._latlng.lat, ed.target._latlng.lng], ed.target._mRadius);
-      shapeGroup += valuesShape;
     });
     
+    //vai ser preciso adicionar no array de allShapes em updateElem
     e.layer.on('pm:dragend', (de) => {
       valuesShape = [];
       valuesShape = L.circle([de.target._latlng.lat, de.target._latlng.lng], de.target._mRadius);
@@ -247,33 +239,31 @@ mymap.on('pm:cut', (c) => {
     marker = L.marker([e.layer._latlng.lat, e.layer._latlng.lng]).addTo(mymap);
     
     allFences();
-    console.log(allShapes);
   }else{
     alert("Não há forma");
   }
 });
 
-
+//Função que verifica a cerca e se ela está dentro ou fora.
 function allFences(){
   var outFence = 0;
-  //foreach
   for(var i = 0; i < allShapes.elements.length; i++){
+    //verifica se o marcador está presente no array de formas e como são multiplas formas, ele verifica todas as formas que estão
+    //adicionadas no mapa
     var valueFences = allShapes.elements[i].contains(marker.getLatLng());
     
     if(valueFences === false){
       outFence = outFence + 1;
     }
   }
+  console.log(allShapes);
+  console.log(outFence);
 
   if(outFence === allShapes.elements.length){
     alert('Está fora da cerca');
   }
 
 }
-
-
-
-
 
 
 </script>
