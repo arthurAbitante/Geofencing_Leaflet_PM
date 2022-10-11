@@ -46,7 +46,6 @@
   	position: 'topleft',
   	editMode: true,
     drawPolyline: false
-
   });
 
  
@@ -56,25 +55,20 @@
   var allShapes = {
       length: 0,
       id: new Array(),
+      elements: new Array(),
 
       addElem: function addElem(elem){
-        [].push.call(this, elem);
+        this.elements.push.call(this.elements, elem);
       },
     
       updateElem: function update(elem){
-     //   [].splice.call(1, i);
-        [].splice.call(this.id, 1, elem);
-
-        //someArray.splice(x, 1);
+        this.elements.splice.call(this.id, 1, elem);
       },
-      removeElem: function removeElem(elem){
-        [].splice.call(this.id, 1);
+      removeElem: function remove(){
+
       },
-
-
       idShape: function idShape(elem){
         this.id.push(elem);
-
       }
 
 
@@ -109,27 +103,16 @@
 mymap.on('pm:remove', (re) => {
    console.log(re.layer._leaflet_id);
 
-/*
-   for(i in idShape){
-    console.log(i);
-   }
-*/
 
- // for(i in allShapes){
- //   console.log(allShapes[i]);
- // }//
+  //for(i in allShapes){
 
-  for(i in allShapes){
+  //  if(allShapes.id[i] === re.layer._leaflet_id){
 
-    if(allShapes.id[i] === re.layer._leaflet_id){
-
-     // delete allShapes[i];
-     // delete allShapes.id;
       allShapes.removeElem(re.layer._latlng);
       console.log(allShapes);
-    }
+    //}
 
-  }
+  //}
 
 /*
   if(shape === 'rectangle'){
@@ -163,9 +146,13 @@ mymap.on('pm:cut', (c) => {
   }
 });
 
-
+//cada shape adicionado em allShapes, ele possui uma parte com o id e outr com as lat e lngs, então 
+//deve ser percorrido ambos para saber qual deve alterar e qual não deve
+//pegar o index do id
+//usar o index do id para pegar o indice do das layers
 
  mymap.on('pm:create', (e) => {
+    console.log(e.shape);
     if(e.shape === 'Rectangle'){
       shape = 'rectangle';
 
@@ -180,18 +167,21 @@ mymap.on('pm:cut', (c) => {
           allShapes.idShape(e.layer._leaflet_id);
           rectangle = [];
         }
+        console.log(allShapes);
       }
       //QUANDO EDITAR
       e.layer.on('pm:edit', (ed) => {
         console.log(ed.target._leaflet_id);
      
-        for(var j = 0; j < allShapes.length; j++){
-            console.log(allShapes[j]);
-        }  
-            
-        for(var i = 0; i < ed.target._latlngs[0].length; i++){
-          allShapes.updateElem(allShapes.id, 1 , [ed.target._latlngs[0][i].lat, ed.target._latlngs[0][i].lng]);
-        } 
+      //  for(var j = 0; j < allShapes.length; j++){
+        //    console.log(allShapes[j]);
+       // }  
+        var indexValue = allShapes.id.indexOf(ed.target._leaflet_id);
+        console.log("Valor do indice: " + indexValue);
+        //allShapes.updateElem();
+    //    for(var i = 0; i < ed.target._latlngs[0].length; i++){
+      //    allShapes.updateElem(allShapes.id, 1 , [ed.target._latlngs[0][i].lat, ed.target._latlngs[0][i].lng]);
+        //} 
       });
 
 //---------------------------------------------QUANDO ARRASTAR
@@ -205,7 +195,7 @@ mymap.on('pm:cut', (c) => {
        });
 
     //poligono
-    }else if(e.shape === 'Poly'){
+    }else if(e.shape === 'Polygon'){
       shape = 'polygon';
       for(var i = 0; i < e.layer._latlngs[0].length; i++){
         polygon.push([e.layer._latlngs[0][i].lat, e.layer._latlngs[0][i].lng]);
@@ -267,15 +257,15 @@ mymap.on('pm:cut', (c) => {
 function allFences(){
   var outFence = 0;
   //foreach
-  for(var i = 0; i < allShapes.length; i++){
-    var valueFences = allShapes[i].contains(marker.getLatLng());
+  for(var i = 0; i < allShapes.elements.length; i++){
+    var valueFences = allShapes.elements[i].contains(marker.getLatLng());
     
     if(valueFences === false){
       outFence = outFence + 1;
     }
   }
 
-  if(outFence === allShapes.length){
+  if(outFence === allShapes.elements.length){
     alert('Está fora da cerca');
   }
 
