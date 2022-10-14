@@ -61,11 +61,14 @@
         this.elements.push.call(this.elements, elem);
       },
     
-      updateElem: function update(elem){
-        this.elements.splice.call(this.id, 1, elem);
+      updateElem: function update(index, target){
+        //this.elements.splice.call(this.id, 1, elem);
+        this.elements[index]._latlngs[0] = [];
+        //console.log(allShapes.elements[indexValue]._latlngs[0]);
+        this.elements[index]._latlngs[0].push(target);
       },
-      removeElem: function remove(){
-
+      removeElem: function remove(index, target){
+        this.elements[index]._latlngs[0] = [];
       },
       idShape: function idShape(elem){
         this.id.push(elem);
@@ -101,9 +104,10 @@
 
 //FUNCAO REMOVER
 mymap.on('pm:remove', (re) => {
-  console.log(re.layer._leaflet_id);
+  var indexValue = allShapes.id.indexOf(re.layer._leaflet_id);
 
-  allShapes.removeElem(re.layer._latlng);
+  allShapes.removeElem(indexValue, re.layer._latlngs[0]);
+  //allShapes.updateElem(indexValue, ed.target._latlngs[0]);
   //Aqui verifica qual é o tipo de forma que foi adicionada e depois limpa o array
   //porém como está sendo adaptado para multiplas formas, então tera que ser reajustado.
   if(shape === 'rectangle'){
@@ -164,10 +168,9 @@ mymap.on('pm:cut', (c) => {
        // }  
         var indexValue = allShapes.id.indexOf(ed.target._leaflet_id);
         console.log("Valor do indice: " + indexValue);
-        allShapes.elements[indexValue]._latlngs[0] = [];
-        console.log(allShapes.elements[indexValue]._latlngs[0]);
-        allShapes.elements[indexValue]._latlngs[0] = ed.target._latlngs[0];
-        console.log(allShapes.elements[indexValue]._latlngs[0]);
+
+        allShapes.updateElem(indexValue, ed.target._latlngs[0]);
+        console.log(allShapes);
         //ele edita porem nao funciona corretamente
 
 
