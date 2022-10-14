@@ -60,15 +60,15 @@
       addElem: function addElem(elem){
         this.elements.push.call(this.elements, elem);
       },
-    
       updateElem: function update(index, target){
         //this.elements.splice.call(this.id, 1, elem);
         this.elements[index]._latlngs[0] = [];
+        this.elements.splice(index, 1);
         //console.log(allShapes.elements[indexValue]._latlngs[0]);
-        this.elements[index]._latlngs[0].push(target);
+        this.elements[index]._latlngs[0] = target;
       },
-      removeElem: function remove(index, target){
-        this.elements[index]._latlngs[0] = [];
+      removeElem: function remove(index){
+        this.elements.splice(index, 1);
       },
       idShape: function idShape(elem){
         this.id.push(elem);
@@ -105,9 +105,9 @@
 //FUNCAO REMOVER
 mymap.on('pm:remove', (re) => {
   var indexValue = allShapes.id.indexOf(re.layer._leaflet_id);
-
-  allShapes.removeElem(indexValue, re.layer._latlngs[0]);
-  //allShapes.updateElem(indexValue, ed.target._latlngs[0]);
+  //analisar o index do all shapes
+  allShapes.removeElem(indexValue);
+  
   //Aqui verifica qual é o tipo de forma que foi adicionada e depois limpa o array
   //porém como está sendo adaptado para multiplas formas, então tera que ser reajustado.
   if(shape === 'rectangle'){
@@ -142,12 +142,8 @@ mymap.on('pm:cut', (c) => {
 //usar o index do id para pegar o indice do das layers
 
  mymap.on('pm:create', (e) => {
-    console.log(e.shape);
     if(e.shape === 'Rectangle'){
-      shape = 'rectangle';
-
-      console.log(allShapes);
-    
+      shape = 'rectangle';    
       for(var i = 0; i < e.layer._latlngs[0].length; i++){
         rectangle.push([e.layer._latlngs[0][i].lat, e.layer._latlngs[0][i].lng]); 
 
@@ -157,20 +153,27 @@ mymap.on('pm:cut', (c) => {
           allShapes.idShape(e.layer._leaflet_id);
           rectangle = [];
         }
-        console.log(allShapes);
       }
       //QUANDO EDITAR
+      console.log(allShapes);
       e.layer.on('pm:edit', (ed) => {
-       // console.log(ed.target._leaflet_id);
-       // console.log(ed.target._latlngs);
-      //  for(var j = 0; j < allShapes.length; j++){
-        //    console.log(allShapes[j]);
-       // }  
+        console.log(ed);
         var indexValue = allShapes.id.indexOf(ed.target._leaflet_id);
-        console.log("Valor do indice: " + indexValue);
+        allShapes.removeElem(indexValue);
 
-        allShapes.updateElem(indexValue, ed.target._latlngs[0]);
-        console.log(allShapes);
+        for(var j = 0; j < ed.target._latlngs[0].length; j++){
+          rectangle.push([ed.target._latlngs[0][j].lat, ed.target._latlngs[0][j].lng]);
+          if(rectangle.length >= ed.target._latlngs[0].length){
+            valuesShape = L.rectangle(rectangle);
+            allShapes.addElem(valuesShape);
+            allShapes.idShape(e.layer._leaflet_id);
+            rectangle = [];
+          }
+        }
+        
+
+       // allShapes.updateElem(indexValue, ed.target._latlngs[0]);
+
         //ele edita porem nao funciona corretamente
 
 
@@ -259,7 +262,7 @@ function allFences(){
       outFence = outFence + 1;
     }
   }
-  console.log(allShapes);
+ // console.log(allShapes);
   console.log(outFence);
 
   if(outFence === allShapes.elements.length){
