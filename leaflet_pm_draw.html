@@ -105,9 +105,11 @@
 //FUNCAO REMOVER
 mymap.on('pm:remove', (re) => {
   var indexValue = allShapes.id.indexOf(re.layer._leaflet_id);
+
   //analisar o index do all shapes
   allShapes.removeElem(indexValue);
-  
+  allShapes.id.splice(indexValue, 1);
+
   //Aqui verifica qual é o tipo de forma que foi adicionada e depois limpa o array
   //porém como está sendo adaptado para multiplas formas, então tera que ser reajustado.
   if(shape === 'rectangle'){
@@ -160,6 +162,7 @@ mymap.on('pm:cut', (c) => {
         console.log(ed);
         var indexValue = allShapes.id.indexOf(ed.target._leaflet_id);
         allShapes.removeElem(indexValue);
+        allShapes.id.splice(indexValue, 1);
 
         for(var j = 0; j < ed.target._latlngs[0].length; j++){
           rectangle.push([ed.target._latlngs[0][j].lat, ed.target._latlngs[0][j].lng]);
@@ -184,8 +187,18 @@ mymap.on('pm:cut', (c) => {
         console.log(de.target._leaflet_id);
         rectangle = [];
 
+        var indexValue = allShapes.id.indexOf(de.target._leaflet_id);
+        allShapes.removeElem(indexValue);
+        allShapes.id.splice(indexValue, 1);
+
         for(var i = 0; i < de.target._latlngs[0].length; i++){
           rectangle.push([de.target._latlngs[0][i].lat, de.target._latlngs[0][i].lng]);
+          if(rectangle.length >= de.target._latlngs[0].length){
+            valuesShape = L.rectangle(rectangle);
+            allShapes.addElem(valuesShape);
+            allShapes.idShape(e.layer._leaflet_id);
+            rectangle = [];
+          }
         }
        });
 
@@ -268,6 +281,43 @@ function allFences(){
   if(outFence === allShapes.elements.length){
     alert('Está fora da cerca');
   }
+
+}
+
+function editInArray(index, ev, shapeArr){
+
+  allShapes.removeElem(index);
+  allShapes.id.splice(indexValue, 1);
+
+  for(var j = 0; j < ev.target._latlngs[0].length; j++){
+    if(shapeArr == 'rectangle'){
+      rectangle.push([ev.target._latlngs[0][j].lat, ev.target._latlngs[0][j].lng]);
+      if(rectangle.length >= ev.target._latlngs[0].length){
+        valuesShape = L.rectangle(rectangle);
+        allShapes.addElem(valuesShape);
+        rectangle = [];
+      }
+    }
+    if(shapeArr == 'polygon'){
+      polygon.push([ev.target._latlngs[0][j].lat, ev.target._latlngs[0][j].lng]);
+      if(polygon.length >= ev.target._latlngs[0].length){
+        valuesShape = L.polygon(polygon);
+        allShapes.addElem(valuesShape);
+        polygon = [];
+      }
+    }
+    if(shapeArr == 'circle'){
+      //ver como faz
+
+      //circle.push([ev.target._latlngs[0][j].lat, ev.target._latlngs[0][j].lng]);
+      //if(circle.length >= ev.target._latlngs[0].length){
+       // valuesShape = L.circle(circle);
+       // allShapes.addElem(valuesShape);
+       // rectangle = [];
+       //}
+      }
+    }
+  
 
 }
 
