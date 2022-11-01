@@ -204,6 +204,8 @@ mymap.on('pm:cut', (c) => {
 
     //poligono
     }else if(e.shape === 'Polygon'){
+      console.log(allShapes);
+
       shape = 'polygon';
       for(var i = 0; i < e.layer._latlngs[0].length; i++){
         polygon.push([e.layer._latlngs[0][i].lat, e.layer._latlngs[0][i].lng]);
@@ -218,18 +220,39 @@ mymap.on('pm:cut', (c) => {
       //quando editar
       e.layer.on('pm:edit', (ed) => {
         polygon = [];
-        for(var i = 0; i < ed.target._latlngs[0].length; i++){
-          polygon.push([ed.target._latlngs[0][i].lat, ed.target._latlngs[0][i].lng]);
-        }  
-      
+
+        var indexValue = allShapes.id.indexOf(ed.target._leaflet_id);
+        allShapes.removeElem(indexValue);
+        allShapes.id.splice(indexValue, 1);
+
+        for(var j = 0; j < ed.target._latlngs[0].length; j++){
+          polygon.push([ed.target._latlngs[0][j].lat, ed.target._latlngs[0][j].lng]);
+          if(polygon.length >= ed.target._latlngs[0].length){
+            valuesShape = L.polygon(polygon);
+            allShapes.addElem(valuesShape);
+            allShapes.idShape(e.layer._leaflet_id);
+            polygon = [];
+          }
+        }
+
       });
 
       //---------------------------------QUANDO ARRASTAR
       e.layer.on('pm:dragend', (de) => {
         polygon = [];
 
-        for(var i = 0; i < de.target._latlngs[0].length; i++){
-          polygon.push([de.target._latlngs[0][i].lat, de.target._latlngs[0][i].lng]);
+        var indexValue = allShapes.id.indexOf(de.target._leaflet_id);
+        allShapes.removeElem(indexValue);
+        allShapes.id.splice(indexValue, 1);
+
+        for(var j = 0; j < de.target._latlngs[0].length; j++){
+          polygon.push([de.target._latlngs[0][j].lat, de.target._latlngs[0][j].lng]);
+          if(polygon.length >= de.target._latlngs[0].length){
+            valuesShape = L.polygon(polygon);
+            allShapes.addElem(valuesShape);
+            allShapes.idShape(e.layer._leaflet_id);
+            polygon = [];
+          }
         }
       });
 
