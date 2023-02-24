@@ -33,48 +33,51 @@
 
 <script type="text/javascript">
 
-  var mymap = L.map('mapid').setView([-20.76125, -44.28316], 5);
+var mymap = L.map('mapid').setView([-20.76125, -44.28316], 5);
 
-  L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mymap);
+L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mymap);
  // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
    // attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
   //}).addTo(mymap);
 
   //L.marker(item.latlng, {pmIgnore: true}).addTo(mymap);
 
-  mymap.pm.addControls({
-  	position: 'topleft',
-  	editMode: true,
-    drawPolyline: false
-  });
+mymap.pm.addControls({
+  position: 'topleft',
+  editMode: true,
+  drawPolyline: false
+});
 
  
-  var marker;
-  var group;
-  var shape;
-  var allShapes = {
-      length: 0,
-      id: new Array(),
-      elements: new Array(),
+var group;
+var shape;
+var countCuttedElements = 0;
+var allShapes = {
+  length: 0,
+  id: new Array(),
+  elements: new Array(),
+  cuttedElements: new Array(),
 
-      addElem: function addElem(elem){
-        this.elements.push.call(this.elements, elem);
-      },
-      updateElem: function update(index, target){
-        //this.elements.splice.call(this.id, 1, elem);
-        this.elements[index]._latlngs[0] = [];
-        this.elements.splice(index, 1);
-        //console.log(allShapes.elements[indexValue]._latlngs[0]);
-        this.elements[index]._latlngs[0] = target;
-      },
-      removeElem: function remove(index){
-        this.elements.splice(index, 1);
-      },
-      idShape: function idShape(elem){
-        this.id.push(elem);
-      }
-  };
+  addElem: function addElem(elem){
+    this.elements.push.call(this.elements, elem);
+  },
+  updateElem: function update(index, target){
+    this.elements[index]._latlngs[0] = [];
+    this.elements.splice(index, 1);
+    this.elements[index]._latlngs[0] = target;
+  },
+  removeElem: function remove(index){
+    this.elements.splice(index, 1);
+  },
+  idShape: function idShape(elem){
+    this.id.push(elem);
+  },
+  addCuttedShapes: function addCuttedShapes(elem){
+    this.cuttedElements.push.call(this.cuttedElements, elem);
+  }
+};
 
+  //adicionar array de cortados
   //representa o valor das formas
   var valuesShape = {};
   //representa o id da forma
@@ -108,6 +111,7 @@ mymap.on('pm:remove', (re) => {
 
   //analisar o index do all shapes
   allShapes.removeElem(indexValue);
+  countCuttedElements = addOrRemoveCountOfCutted(false, countCuttedElements, allShapes.cuttedElements.length);
   allShapes.id.splice(indexValue, 1);
 
   //Aqui verifica qual é o tipo de forma que foi adicionada e depois limpa o array
@@ -126,23 +130,36 @@ mymap.on('pm:remove', (re) => {
 //----------------------------QUANDO CORTAR
 mymap.on('pm:cut', (c) => {
   var result = c.layer._leaflet_id - 1;
-
   if(shape === 'rectangle'){
     rectangle = [];
     shape = 'polygon';
-     
   }
+
+  var lastElement = c.layer._layers[result].length - 1;
+  var last = c.layer._layers[result]._latlngs.length - 1;
   polygon = [];
-  for(var i = 0; i < c.layer._layers[result]._latlngs[0].length; i++){
-    polygon.push([c.layer._layers[result]._latlngs[0][i].lat, c.layer._layers[result]._latlngs[0][i].lng]);
+
+  for(var i = 0; i < c.layer._layers[result]._latlngs[last].length; i++){
+    polygon.push([c.layer._layers[result]._latlngs[last][i].lat, c.layer._layers[result]._latlngs[last][i].lng]); 
+
+    if(polygon.length >= c.layer._layers[result]._latlngs[last].length){
+      valuesShape = L.polygon(polygon);
+      allShapes.addCuttedShapes(valuesShape);
+      countCuttedElements = addOrRemoveCountOfCutted(true, countCuttedElements, 1);
+      polygon = [];
+    }
   }
+  console.log(c);
+  console.log(allShapes);
+  //toda a vez que cortar, tem que ser pego o ultimo index em c.layer._cv. a forma presente e adicionar.
+
+
 });
 
 //cada shape adicionado em allShapes, ele possui uma parte com o id e outr com as lat e lngs, então 
 //deve ser percorrido ambos para saber qual deve alterar e qual não deve
 //pegar o index do id
 //usar o index do id para pegar o indice do das layers
-
  mymap.on('pm:create', (e) => {
     if(e.shape === 'Rectangle'){
       shape = 'rectangle';    
@@ -267,81 +284,176 @@ mymap.on('pm:cut', (c) => {
 
     //vai ser preciso adicionar no array de allShapes em updateElem
     e.layer.on('pm:edit', (ed) => {
+     // valuesShape = [];
+    //  valuesShape = L.circle([ed.target._latlng.lat, ed.target._latlng.lng], ed.target._mRadius);
+
       valuesShape = [];
+
+      var indexValue = allShapes.id.indexOf(ed.target._leaflet_id);
+      allShapes.removeElem(indexValue);
+      allShapes.id.splice(indexValue, 1);
+
       valuesShape = L.circle([ed.target._latlng.lat, ed.target._latlng.lng], ed.target._mRadius);
+      allShapes.addElem(valuesShape);
+      allShapes.idShape(e.layer._leaflet_id);
+      valuesShape= [];
+
     });
     
     //vai ser preciso adicionar no array de allShapes em updateElem
     e.layer.on('pm:dragend', (de) => {
+     // valuesShape = [];
+     // valuesShape = L.circle([de.target._latlng.lat, de.target._latlng.lng], de.target._mRadius);
       valuesShape = [];
+
+      var indexValue = allShapes.id.indexOf(de.target._leaflet_id);
+      allShapes.removeElem(indexValue);
+      allShapes.id.splice(indexValue, 1);
+
       valuesShape = L.circle([de.target._latlng.lat, de.target._latlng.lng], de.target._mRadius);
+      allShapes.addElem(valuesShape);
+      allShapes.idShape(e.layer._leaflet_id);
+      valuesShape= [];
+    });
+
+  }else if(e.shape === 'CircleMarker'){
+
+    shape = 'circle';
+
+    valuesShape = L.circle([e.layer._latlng.lat, e.layer._latlng.lng], e.layer._mRadius);
+    allShapes.addElem(valuesShape);
+    allShapes.idShape(e.layer._leaflet_id);
+
+    //vai ser preciso adicionar no array de allShapes em updateElem
+    e.layer.on('pm:edit', (ed) => {
+     // valuesShape = [];
+    //  valuesShape = L.circle([ed.target._latlng.lat, ed.target._latlng.lng], ed.target._mRadius);
+
+      valuesShape = [];
+
+      var indexValue = allShapes.id.indexOf(ed.target._leaflet_id);
+      allShapes.removeElem(indexValue);
+      allShapes.id.splice(indexValue, 1);
+
+      valuesShape = L.circle([ed.target._latlng.lat, ed.target._latlng.lng], ed.target._mRadius);
+      allShapes.addElem(valuesShape);
+      allShapes.idShape(e.layer._leaflet_id);
+      valuesShape= [];
+
+    });
+    
+    //vai ser preciso adicionar no array de allShapes em updateElem
+    e.layer.on('pm:dragend', (de) => {
+     // valuesShape = [];
+     // valuesShape = L.circle([de.target._latlng.lat, de.target._latlng.lng], de.target._mRadius);
+      valuesShape = [];
+
+      var indexValue = allShapes.id.indexOf(de.target._leaflet_id);
+      allShapes.removeElem(indexValue);
+      allShapes.id.splice(indexValue, 1);
+
+      valuesShape = L.circle([de.target._latlng.lat, de.target._latlng.lng], de.target._mRadius);
+      allShapes.addElem(valuesShape);
+      allShapes.idShape(e.layer._leaflet_id);
+      valuesShape= [];
     });
 
   }else if(e.shape === 'Marker'){
-    marker = L.marker([e.layer._latlng.lat, e.layer._latlng.lng]).addTo(mymap);
+    var marker = L.marker([e.layer._latlng.lat, e.layer._latlng.lng]).addTo(mymap);
     
-    allFences();
+    allFences(marker);
   }else{
     alert("Não há forma");
   }
 });
 
 //Função que verifica a cerca e se ela está dentro ou fora.
-function allFences(){
+//função que verifica se corta
+function allFences(marker){
   var outFence = 0;
-  for(var i = 0; i < allShapes.elements.length; i++){
-    //verifica se o marcador está presente no array de formas e como são multiplas formas, ele verifica todas as formas que estão
-    //adicionadas no mapa
-    var valueFences = allShapes.elements[i].contains(marker.getLatLng());
-    
-    if(valueFences === false){
-      outFence = outFence + 1;
+  var outCuttedFence = 0;
+  var cutted = checkIfIsOnCutted(marker);
+  var shapeFence = false;
+  var cuttedFence = false;
+
+
+ // if(cutted){
+  //  console.log("dentro do cortado");
+
+  //}
+
+
+  for(var i = 0; i < allShapes.cuttedElements.length; i++){
+      //verifica se o marcador está presente no array de formas e como são multiplas formas, ele verifica todas as formas que estão
+      //adicionadas no mapa
+    cuttedFence = allShapes.cuttedElements[i].contains(marker.getLatLng());
+    if(cuttedFence === false){
+      outCuttedFence = outCuttedFence + 1;
+    }else{
+      console.log("dentro do cortado");
     }
   }
+   /*for(var i = 0; i < allShapes.cuttedElements.length; i++){
+      cuttedFence = allShapes.cuttedElements[i].contains(marker.getLatLng());
+      console.log("value fences cutted: "+cuttedFence);
+      if(cuttedFence === false){
+        outCuttedFence = outCuttedFence + 1;
+        console.log("dentro do cortado");
+        //outFence = outFence - 1;
+      }
+    }*/
+
+
+    for(var i = 0; i < allShapes.elements.length; i++){
+      //verifica se o marcador está presente no array de formas e como são multiplas formas, ele verifica todas as formas que estão
+      //adicionadas no mapa
+      shapeFence = allShapes.elements[i].contains(marker.getLatLng());
+      if(shapeFence === false){
+        outFence = outFence + 1;
+      }
+    }
+
  // console.log(allShapes);
-  console.log(outFence);
+  console.log("out: "+outFence);
+  console.log("cutted: "+outCuttedFence);
+  console.log("e.l: " +allShapes.elements.length);
+  console.log("ce.l: " +allShapes.cuttedElements.length);
+  //precisa ser ajustado os multiplos cortes e verificar se está fora da cerca
+
 
   if(outFence === allShapes.elements.length){
+    alert('Está fora da cerca');
+  }
+  if(outCuttedFence != allShapes.cuttedElements.length){
     alert('Está fora da cerca');
   }
 
 }
 
-function editInArray(index, ev, shapeArr){
 
-  allShapes.removeElem(index);
-  allShapes.id.splice(indexValue, 1);
+function checkIfIsOnCutted(marker){
+    //verifica se corta
+    var returnValue = false;
+    for(var i = 0; i < allShapes.cuttedElements.length; i++){
+      var valueCutted = allShapes.cuttedElements[i].contains(marker.getLatLng());
 
-  for(var j = 0; j < ev.target._latlngs[0].length; j++){
-    if(shapeArr == 'rectangle'){
-      rectangle.push([ev.target._latlngs[0][j].lat, ev.target._latlngs[0][j].lng]);
-      if(rectangle.length >= ev.target._latlngs[0].length){
-        valuesShape = L.rectangle(rectangle);
-        allShapes.addElem(valuesShape);
-        rectangle = [];
+      if(valueCutted === true){
+        returnValue = true;
+      }else{
+        returnValue = false;
       }
-    }
-    if(shapeArr == 'polygon'){
-      polygon.push([ev.target._latlngs[0][j].lat, ev.target._latlngs[0][j].lng]);
-      if(polygon.length >= ev.target._latlngs[0].length){
-        valuesShape = L.polygon(polygon);
-        allShapes.addElem(valuesShape);
-        polygon = [];
-      }
-    }
-    if(shapeArr == 'circle'){
-      //ver como faz
+    } 
+    return returnValue;
+}
 
-      //circle.push([ev.target._latlngs[0][j].lat, ev.target._latlngs[0][j].lng]);
-      //if(circle.length >= ev.target._latlngs[0].length){
-       // valuesShape = L.circle(circle);
-       // allShapes.addElem(valuesShape);
-       // rectangle = [];
-       //}
-      }
-    }
-  
-
+function addOrRemoveCountOfCutted(addOrRemove, countCutted, value){
+  var countElements = 0;
+  if(addOrRemove){
+    countElements = countCutted + value;
+  }else{
+    countElements = countCutted - value;
+  }
+  return countElements;
 }
 
 
