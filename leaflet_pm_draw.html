@@ -36,11 +36,6 @@
 var mymap = L.map('mapid').setView([-20.76125, -44.28316], 5);
 
 L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mymap);
- // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-   // attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-  //}).addTo(mymap);
-
-  //L.marker(item.latlng, {pmIgnore: true}).addTo(mymap);
 
 mymap.pm.addControls({
   position: 'topleft',
@@ -77,23 +72,13 @@ var allShapes = {
   }
 };
 
-  //adicionar array de cortados
-  //representa o valor das formas
   var valuesShape = {};
-  //representa o id da forma
   var idShape = new Array();
-  //representa se está dentro ou fora da cerca
   var valueFence = new Array();
-  //representa a forma retangular
   var rectangle = new Array();
-  //representa a forma poligonal que é adaptada para varias formas
   var polygon = new Array();
-  //representa o circulo
   var circle = new Array();
 
-  //precisará da representação do CircleMarker semelhante ao circulo
-
-//checar parameto no circulo
   L.Circle.include({
   contains: function (latLng) {
     return this.getLatLng().distanceTo(latLng) < this.getRadius();
@@ -105,17 +90,14 @@ var allShapes = {
     allowSelfIntersection: false
  });
 
-//FUNCAO REMOVER
+
 mymap.on('pm:remove', (re) => {
   var indexValue = allShapes.id.indexOf(re.layer._leaflet_id);
 
-  //analisar o index do all shapes
   allShapes.removeElem(indexValue);
   countCuttedElements = addOrRemoveCountOfCutted(false, countCuttedElements, allShapes.cuttedElements.length);
   allShapes.id.splice(indexValue, 1);
 
-  //Aqui verifica qual é o tipo de forma que foi adicionada e depois limpa o array
-  //porém como está sendo adaptado para multiplas formas, então tera que ser reajustado.
   if(shape === 'rectangle'){
       rectangle = [];
   }
@@ -127,248 +109,96 @@ mymap.on('pm:remove', (re) => {
   }
 });
 
-//----------------------------QUANDO CORTAR
 mymap.on('pm:cut', (c) => {
-  var result = c.layer._leaflet_id - 1;
-  if(shape === 'rectangle'){
-    rectangle = [];
-    shape = 'polygon';
-  }
+    var resultLayer = c.layer._layers[c.layer._leaflet_id - 1];
+    var lastLatLngs = resultLayer._latlngs[resultLayer._latlngs.length - 1];
 
-  var lastElement = c.layer._layers[result].length - 1;
-  var last = c.layer._layers[result]._latlngs.length - 1;
-  polygon = [];
-
-  for(var i = 0; i < c.layer._layers[result]._latlngs[last].length; i++){
-    polygon.push([c.layer._layers[result]._latlngs[last][i].lat, c.layer._layers[result]._latlngs[last][i].lng]); 
-
-    if(polygon.length >= c.layer._layers[result]._latlngs[last].length){
-      valuesShape = L.polygon(polygon);
-      allShapes.addCuttedShapes(valuesShape);
-      countCuttedElements = addOrRemoveCountOfCutted(true, countCuttedElements, 1);
-      polygon = [];
+    // Switch shape if needed
+    if (shape === 'rectangle') {
+        shape = 'polygon'; // Change shape to polygon after cutting
     }
-  }
-  console.log(c);
-  console.log(allShapes);
-  //toda a vez que cortar, tem que ser pego o ultimo index em c.layer._cv. a forma presente e adicionar.
 
+    // Extract polygon coordinates using map
+    const polygonCoords = lastLatLngs.map(latlng => [latlng.lat, latlng.lng]);
 
+    // Create a polygon and add it to allShapes
+    valuesShape = L.polygon(polygonCoords);
+    allShapes.addCuttedShapes(valuesShape);
+
+    // Update cutted element count
+    countCuttedElements = addOrRemoveCountOfCutted(true, countCuttedElements, 1);
 });
 
-//cada shape adicionado em allShapes, ele possui uma parte com o id e outr com as lat e lngs, então 
-//deve ser percorrido ambos para saber qual deve alterar e qual não deve
-//pegar o index do id
-//usar o index do id para pegar o indice do das layers
- mymap.on('pm:create', (e) => {
-    if(e.shape === 'Rectangle'){
-      shape = 'rectangle';    
-      for(var i = 0; i < e.layer._latlngs[0].length; i++){
-        rectangle.push([e.layer._latlngs[0][i].lat, e.layer._latlngs[0][i].lng]); 
 
-        if(rectangle.length >= e.layer._latlngs[0].length){
-          valuesShape = L.rectangle(rectangle);
-          allShapes.addElem(valuesShape);
-          allShapes.idShape(e.layer._leaflet_id);
-          rectangle = [];
-        }
-      }
-      //QUANDO EDITAR
-      console.log(allShapes);
-      e.layer.on('pm:edit', (ed) => {
-        console.log(ed);
-        var indexValue = allShapes.id.indexOf(ed.target._leaflet_id);
-        allShapes.removeElem(indexValue);
-        allShapes.id.splice(indexValue, 1);
+function handleShapeCreation(e, shapeType) {
+    const latlngs = getLatLngs(e.layer);
+    let valuesShape;
+    // Create shape based on the type
+    if (shapeType === 'rectangle') {
+        valuesShape = L.rectangle(latlngs);
+    } else if (shapeType === 'polygon') {
+        valuesShape = L.polygon(latlngs);
+    } else if (shapeType === 'circle') {
+        valuesShape = L.circle([e.layer._latlng.lat, e.layer._latlng.lng], e.layer._mRadius);
+    } else if (shapeType === 'circleMarker') {
+        valuesShape = L.circleMarker([e.layer._latlng.lat, e.layer._latlng.lng], e.layer._mRadius);
+    } else if (shapeType === 'marker') {
+        valuesShape = L.marker([e.layer._latlng.lat, e.layer._latlng.lng]).addTo(mymap);
+        allFences(valuesShape);
+        return; // Exit, no need to add this to allShapes
+    } else {
+        alert("Unknown shape");
+        return;
+    }
 
-        for(var j = 0; j < ed.target._latlngs[0].length; j++){
-          rectangle.push([ed.target._latlngs[0][j].lat, ed.target._latlngs[0][j].lng]);
-          if(rectangle.length >= ed.target._latlngs[0].length){
-            valuesShape = L.rectangle(rectangle);
-            allShapes.addElem(valuesShape);
-            allShapes.idShape(e.layer._leaflet_id);
-            rectangle = [];
-          }
-        }
-        
-
-       // allShapes.updateElem(indexValue, ed.target._latlngs[0]);
-
-        //ele edita porem nao funciona corretamente
-
-
-      });
-
-//---------------------------------------------QUANDO ARRASTAR
-      e.layer.on('pm:dragend', (de) => {
-        console.log(de.target._leaflet_id);
-        rectangle = [];
-
-        var indexValue = allShapes.id.indexOf(de.target._leaflet_id);
-        allShapes.removeElem(indexValue);
-        allShapes.id.splice(indexValue, 1);
-
-        for(var i = 0; i < de.target._latlngs[0].length; i++){
-          rectangle.push([de.target._latlngs[0][i].lat, de.target._latlngs[0][i].lng]);
-          if(rectangle.length >= de.target._latlngs[0].length){
-            valuesShape = L.rectangle(rectangle);
-            allShapes.addElem(valuesShape);
-            allShapes.idShape(e.layer._leaflet_id);
-            rectangle = [];
-          }
-        }
-       });
-
-    //poligono
-    }else if(e.shape === 'Polygon'){
-      console.log(allShapes);
-
-      shape = 'polygon';
-      for(var i = 0; i < e.layer._latlngs[0].length; i++){
-        polygon.push([e.layer._latlngs[0][i].lat, e.layer._latlngs[0][i].lng]);
-        if(polygon.length >= e.layer._latlngs[0].length){
-          valuesShape = L.polygon(polygon);
-          allShapes.addElem(valuesShape);
-          allShapes.idShape(e.layer._leaflet_id);
-          polygon = [];
-        }
-      }
-
-      //quando editar
-      e.layer.on('pm:edit', (ed) => {
-        polygon = [];
-
-        var indexValue = allShapes.id.indexOf(ed.target._leaflet_id);
-        allShapes.removeElem(indexValue);
-        allShapes.id.splice(indexValue, 1);
-
-        for(var j = 0; j < ed.target._latlngs[0].length; j++){
-          polygon.push([ed.target._latlngs[0][j].lat, ed.target._latlngs[0][j].lng]);
-          if(polygon.length >= ed.target._latlngs[0].length){
-            valuesShape = L.polygon(polygon);
-            allShapes.addElem(valuesShape);
-            allShapes.idShape(e.layer._leaflet_id);
-            polygon = [];
-          }
-        }
-
-      });
-
-      //---------------------------------QUANDO ARRASTAR
-      e.layer.on('pm:dragend', (de) => {
-        polygon = [];
-
-        var indexValue = allShapes.id.indexOf(de.target._leaflet_id);
-        allShapes.removeElem(indexValue);
-        allShapes.id.splice(indexValue, 1);
-
-        for(var j = 0; j < de.target._latlngs[0].length; j++){
-          polygon.push([de.target._latlngs[0][j].lat, de.target._latlngs[0][j].lng]);
-          if(polygon.length >= de.target._latlngs[0].length){
-            valuesShape = L.polygon(polygon);
-            allShapes.addElem(valuesShape);
-            allShapes.idShape(e.layer._leaflet_id);
-            polygon = [];
-          }
-        }
-      });
-
-  //a forma do circulo é diferente de outros para ser checado a cerca dele
-  //
-  }else if(e.shape === 'Circle'){
-    shape = 'circle';
-
-    valuesShape = L.circle([e.layer._latlng.lat, e.layer._latlng.lng], e.layer._mRadius);
     allShapes.addElem(valuesShape);
     allShapes.idShape(e.layer._leaflet_id);
 
-    //vai ser preciso adicionar no array de allShapes em updateElem
-    e.layer.on('pm:edit', (ed) => {
-     // valuesShape = [];
-    //  valuesShape = L.circle([ed.target._latlng.lat, ed.target._latlng.lng], ed.target._mRadius);
+    // Add event listeners for edit and drag
+    addShapeEventListeners(e.layer, shapeType);
+   // console.log(allShapes.elements);
+}
 
-      valuesShape = [];
+// Helper function to extract latlngs for rectangles and polygons
+function getLatLngs(layer) {
+    if (layer._latlngs && layer._latlngs[0]) {
+        return layer._latlngs[0].map(latlng => [latlng.lat, latlng.lng]);
+    }
+    return [];
+}
 
-      var indexValue = allShapes.id.indexOf(ed.target._leaflet_id);
-      allShapes.removeElem(indexValue);
-      allShapes.id.splice(indexValue, 1);
+// Add event listeners for edit and drag
+function addShapeEventListeners(layer, shapeType) {
+    layer.on('pm:edit', (ed) => updateShape(ed, shapeType));
+    layer.on('pm:dragend', (de) => updateShape(de, shapeType));
+}
 
-      valuesShape = L.circle([ed.target._latlng.lat, ed.target._latlng.lng], ed.target._mRadius);
-      allShapes.addElem(valuesShape);
-      allShapes.idShape(e.layer._leaflet_id);
-      valuesShape= [];
+// Function to update shape on edit or drag
+function updateShape(event, shapeType) {
+    const latlngs = getLatLngs(event.target);
+    const layerId = event.target._leaflet_id;
 
-    });
-    
-    //vai ser preciso adicionar no array de allShapes em updateElem
-    e.layer.on('pm:dragend', (de) => {
-     // valuesShape = [];
-     // valuesShape = L.circle([de.target._latlng.lat, de.target._latlng.lng], de.target._mRadius);
-      valuesShape = [];
+    // Remove old shape
+    const indexValue = allShapes.id.indexOf(layerId);
+    if (indexValue !== -1) {
+        allShapes.removeElem(indexValue);
+        allShapes.id.splice(indexValue, 1);
+    }
 
-      var indexValue = allShapes.id.indexOf(de.target._leaflet_id);
-      allShapes.removeElem(indexValue);
-      allShapes.id.splice(indexValue, 1);
+    // Create and add new shape
+    handleShapeCreation(event, shapeType);
+}
 
-      valuesShape = L.circle([de.target._latlng.lat, de.target._latlng.lng], de.target._mRadius);
-      allShapes.addElem(valuesShape);
-      allShapes.idShape(e.layer._leaflet_id);
-      valuesShape= [];
-    });
-
-  }else if(e.shape === 'CircleMarker'){
-
-    shape = 'circle';
-
-    valuesShape = L.circle([e.layer._latlng.lat, e.layer._latlng.lng], e.layer._mRadius);
-    allShapes.addElem(valuesShape);
-    allShapes.idShape(e.layer._leaflet_id);
-
-    //vai ser preciso adicionar no array de allShapes em updateElem
-    e.layer.on('pm:edit', (ed) => {
-     // valuesShape = [];
-    //  valuesShape = L.circle([ed.target._latlng.lat, ed.target._latlng.lng], ed.target._mRadius);
-
-      valuesShape = [];
-
-      var indexValue = allShapes.id.indexOf(ed.target._leaflet_id);
-      allShapes.removeElem(indexValue);
-      allShapes.id.splice(indexValue, 1);
-
-      valuesShape = L.circle([ed.target._latlng.lat, ed.target._latlng.lng], ed.target._mRadius);
-      allShapes.addElem(valuesShape);
-      allShapes.idShape(e.layer._leaflet_id);
-      valuesShape= [];
-
-    });
-    
-    //vai ser preciso adicionar no array de allShapes em updateElem
-    e.layer.on('pm:dragend', (de) => {
-     // valuesShape = [];
-     // valuesShape = L.circle([de.target._latlng.lat, de.target._latlng.lng], de.target._mRadius);
-      valuesShape = [];
-
-      var indexValue = allShapes.id.indexOf(de.target._leaflet_id);
-      allShapes.removeElem(indexValue);
-      allShapes.id.splice(indexValue, 1);
-
-      valuesShape = L.circle([de.target._latlng.lat, de.target._latlng.lng], de.target._mRadius);
-      allShapes.addElem(valuesShape);
-      allShapes.idShape(e.layer._leaflet_id);
-      valuesShape= [];
-    });
-
-  }else if(e.shape === 'Marker'){
-    var marker = L.marker([e.layer._latlng.lat, e.layer._latlng.lng]).addTo(mymap);
-    
-    allFences(marker);
-  }else{
-    alert("Não há forma");
-  }
+// Handle shape creation event
+mymap.on('pm:create', (e) => {
+    const shapeType = e.shape.toLowerCase(); // 'rectangle', 'polygon', 'circle', etc.
+    handleShapeCreation(e, shapeType);
+    console.log(JSON.stringify(allShapes.elements.map(elem => elem._latlngs)));
 });
 
-//Função que verifica a cerca e se ela está dentro ou fora.
-//função que verifica se corta
+
+
+
 function allFences(marker){
   var outFence = 0;
   var outCuttedFence = 0;
@@ -376,16 +206,7 @@ function allFences(marker){
   var shapeFence = false;
   var cuttedFence = false;
 
-
- // if(cutted){
-  //  console.log("dentro do cortado");
-
-  //}
-
-
   for(var i = 0; i < allShapes.cuttedElements.length; i++){
-      //verifica se o marcador está presente no array de formas e como são multiplas formas, ele verifica todas as formas que estão
-      //adicionadas no mapa
     cuttedFence = allShapes.cuttedElements[i].contains(marker.getLatLng());
     if(cuttedFence === false){
       outCuttedFence = outCuttedFence + 1;
@@ -393,33 +214,13 @@ function allFences(marker){
       console.log("dentro do cortado");
     }
   }
-   /*for(var i = 0; i < allShapes.cuttedElements.length; i++){
-      cuttedFence = allShapes.cuttedElements[i].contains(marker.getLatLng());
-      console.log("value fences cutted: "+cuttedFence);
-      if(cuttedFence === false){
-        outCuttedFence = outCuttedFence + 1;
-        console.log("dentro do cortado");
-        //outFence = outFence - 1;
-      }
-    }*/
-
 
     for(var i = 0; i < allShapes.elements.length; i++){
-      //verifica se o marcador está presente no array de formas e como são multiplas formas, ele verifica todas as formas que estão
-      //adicionadas no mapa
       shapeFence = allShapes.elements[i].contains(marker.getLatLng());
       if(shapeFence === false){
         outFence = outFence + 1;
       }
     }
-
- // console.log(allShapes);
-  console.log("out: "+outFence);
-  console.log("cutted: "+outCuttedFence);
-  console.log("e.l: " +allShapes.elements.length);
-  console.log("ce.l: " +allShapes.cuttedElements.length);
-  //precisa ser ajustado os multiplos cortes e verificar se está fora da cerca
-
 
   if(outFence === allShapes.elements.length){
     alert('Está fora da cerca');
@@ -430,9 +231,7 @@ function allFences(marker){
 
 }
 
-
 function checkIfIsOnCutted(marker){
-    //verifica se corta
     var returnValue = false;
     for(var i = 0; i < allShapes.cuttedElements.length; i++){
       var valueCutted = allShapes.cuttedElements[i].contains(marker.getLatLng());
