@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Leaflet Draw</title>
+	<meta charset="utf-8">
+	 <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+
+    <!-- Load Leaflet from CDN -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css"
+    integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
+    crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"
+    integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg=="
+    crossorigin=""></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.pm@latest/dist/leaflet.pm.css" />
+    <script src="https://unpkg.com/leaflet.pm@latest/dist/leaflet.pm.min.js"></script>
+    <!--biblioteca para checar distancia entre pontos de latitudes e longitudes-->
+    <script src="https://cdn.rawgit.com/hayeswise/Leaflet.PointInPolygon/v1.0.0/wise-leaflet-pip.js"></script>
+
+    <!--Biblioteca Leaflet 3D-->
+    <script src="http://www.webglearth.com/v2/api.js"></script>
+<style type="text/css">
+	    body { margin:0; padding:0; }
+    #mapid { position: absolute; top:0; bottom:0; right:0; left:0; }
+</style>
+
+</head>
+<body>
+<div id="mapid"></div>
+
+</body>
+
+<script type="text/javascript">
+
+var mymap = L.map('mapid').setView([-20.76125, -44.28316], 5);
+
+L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mymap);
+
+mymap.pm.addControls({
+  position: 'topleft',
+  editMode: true,
+  drawPolyline: false
+});
+ 
+var shape;
+var countCuttedElements = 0;
+var allShapes = {
+  length: 0,
+  id: new Array(),
+  elements: new Array(),
+  cuttedElements: new Array(),
+
+  addElem: function addElem(elem){
+    this.elements.push.call(this.elements, elem);
+  },
+  updateElem: function update(index, target){
+    this.elements[index]._latlngs[0] = [];
+    this.elements.splice(index, 1);
+    this.elements[index]._latlngs[0] = target;
+  },
+  removeElem: function remove(index){
+    this.elements.splice(index, 1);
+  },
+  idShape: function idShape(elem){
+    this.id.push(elem);
+  },
+  addCuttedShapes: function addCuttedShapes(elem){
+    this.cuttedElements.push.call(this.cuttedElements, elem);
+  }
+};
+
+  var valuesShape = {};
+  var idShape = new Array();
+  var valueFence = new Array();
+  var rectangle = new Array();
+  var polygon = new Array();
+  var circle = new Array();
+
+  L.Circle.include({
+  contains: function (latLng) {
+    return this.getLatLng().distanceTo(latLng) < this.getRadius();
+  }
+});
+
+ mymap.pm.globalRemovalEnabled();
+ mymap.pm.Draw.Cut.enable({
+    allowSelfIntersection: false
+ });
+
+
+mymap.on('pm:remove', (re) => {
+  var indexValue = allShapes.id.indexOf(re.layer._leaflet_id);
+
+ 
+  fetch('http://localhost:3000/api/'+re.layer._leaflet_id, {
+        method: 'DELETE',
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Shape removed:', data);
+    })
+    .catch(error => {
+        console.error('Error removing shape:', error);
+    });
+
+
+  allShapes.removeElem(indexValue);
+  countCuttedElements = addOrRemoveCountOfCutted(false, countCuttedElements, allShapes.cuttedElements.length);
+  allShapes.id.splice(indexValue, 1);
+
+});
+
+mymap.on('pm:cut', (c) => {
+    var resultLayer = c.layer._layers[c.layer._leaflet_id - 1];
+    var lastLatLngs = resultLayer._latlngs[resultLayer._latlngs.length - 1];
+
+    // Switch shape if needed
+    if (shape === 'rectangle') {
+        shape = 'polygon'; // Change shape to polygon after cutting
+    }
+
+    // Extract polygon coordinates using map
+    const polygonCoords = lastLatLngs.map(latlng => [latlng.lat, latlng.lng]);
+
+    // Create a polygon and add it to allShapes
+    valuesShape = L.polygon(polygonCoords);
+    allShapes.addCuttedShapes(valuesShape);
+
+    // Update cutted element count
+    countCuttedElements = addOrRemoveCountOfCutted(true, countCuttedElements, 1);
+});
+
+
+function handleShapeCreation(e, shapeType) {
+    const latlngs = getLatLngs(e.layer);
+    let valuesShape;
+    // Create shape based on the type
+    if (shapeType === 'rectangle') {
+        valuesShape = L.rectangle(latlngs);
+    } else if (shapeType === 'polygon') {
+        valuesShape = L.polygon(latlngs);
+    } else if (shapeType === 'circle') {
+        valuesShape = L.circle([e.layer._latlng.lat, e.layer._latlng.lng], e.layer._mRadius);
+    } else if (shapeType === 'circleMarker') {
+        valuesShape = L.circleMarker([e.layer._latlng.lat, e.layer._latlng.lng], e.layer._mRadius);
+    } else if (shapeType === 'marker') {
+        valuesShape = L.marker([e.layer._latlng.lat, e.layer._latlng.lng]).addTo(mymap);
+        allFences(valuesShape);
+        return; // Exit, no need to add this to allShapes
+    } else {
+        alert("Unknown shape");
+        return;
+    }
+
+    allShapes.addElem({ layer: valuesShape, shapeType: shapeType });
+    allShapes.idShape(e.layer._leaflet_id);
+
+    // Add event listeners for edit and drag
+    addShapeEventListeners(e.layer, shapeType);
+   // console.log(allShapes.elements);
+}
+
+// Helper function to extract latlngs for rectangles and polygons
+function getLatLngs(layer) {
+    if (layer._latlngs && layer._latlngs[0]) {
+        return layer._latlngs[0].map(latlng => [latlng.lat, latlng.lng]);
+    }
+    return [];
+}
+
+// Add event listeners for edit and drag
+function addShapeEventListeners(layer, shapeType) {
+    layer.on('pm:edit', (ed) => updateShape(ed, shapeType));
+    layer.on('pm:dragend', (de) => updateShape(de, shapeType));
+}
+
+// Function to update shape on edit or drag
+function updateShape(event, shapeType) {
+    const latlngs = getLatLngs(event.target);
+    const layerId = event.target._leaflet_id;
+
+    // Remove old shape
+    const indexValue = allShapes.id.indexOf(layerId);
+    if (indexValue !== -1) {
+        allShapes.removeElem(indexValue);
+        allShapes.id.splice(indexValue, 1);
+    }
+
+    // Create and add new shape
+    handleShapeCreation(event, shapeType);
+}
+
+// Handle shape creation event
+mymap.on('pm:create', (e) => {
+    const shapeType = e.shape.toLowerCase(); // 'rectangle', 'polygon', 'circle', etc.
+    const latlngs = getLatLngs(e.layer);
+    
+
+    handleShapeCreation(e, shapeType);
+
+    const shapeData = {
+      id: e.layer._leaflet_id, 
+      shape_type: shapeType,
+      coordinates: latlngs
+    };
+
+
+    fetch('http://localhost:3000/api/shapes', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(shapeData)  // Make sure this is valid
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Shape saved:', data);
+    })
+    .catch(error => {
+        console.error('Error saving shape:', error);
+    });
+
+
+    console.log(JSON.stringify(allShapes.elements.map(elem => elem._latlngs)));
+});
+
+
+function allFences(marker){
+  var outFence = 0;
+  var outCuttedFence = 0;
+  var cutted = checkIfIsOnCutted(marker);
+  var shapeFence = false;
+  var cuttedFence = false;
+
+  for(var i = 0; i < allShapes.cuttedElements.length; i++){
+    cuttedFence = allShapes.cuttedElements[i].contains(marker.getLatLng());
+    if(cuttedFence === false){
+      outCuttedFence = outCuttedFence + 1;
+    }else{
+      console.log("dentro do cortado");
+    }
+  }
+
+    for(var i = 0; i < allShapes.elements.length; i++){
+      shapeFence = allShapes.elements[i].contains(marker.getLatLng());
+      if(shapeFence === false){
+        outFence = outFence + 1;
+      }
+    }
+
+  if(outFence === allShapes.elements.length){
+    alert('Está fora da cerca');
+  }
+  if(outCuttedFence != allShapes.cuttedElements.length){
+    alert('Está fora da cerca');
+  }
+
+}
+
+function checkIfIsOnCutted(marker){
+    var returnValue = false;
+    for(var i = 0; i < allShapes.cuttedElements.length; i++){
+      var valueCutted = allShapes.cuttedElements[i].contains(marker.getLatLng());
+
+      if(valueCutted === true){
+        returnValue = true;
+      }else{
+        returnValue = false;
+      }
+    } 
+    return returnValue;
+}
+
+function addOrRemoveCountOfCutted(addOrRemove, countCutted, value){
+  var countElements = 0;
+  if(addOrRemove){
+    countElements = countCutted + value;
+  }else{
+    countElements = countCutted - value;
+  }
+  return countElements;
+}
+
+
+</script>
+
+
+</html>
