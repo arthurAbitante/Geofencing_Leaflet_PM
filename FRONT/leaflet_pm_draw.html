@@ -93,7 +93,7 @@ mymap.on('pm:remove', (re) => {
   var indexValue = allShapes.id.indexOf(re.layer._leaflet_id);
 
  
-  fetch('http://localhost:3000/api/'+re.layer._leaflet_id, {
+  fetch('http://localhost:3000/api/shapes/'+re.layer._leaflet_id, {
         method: 'DELETE',
     })
     .then(response => response.json())
@@ -126,7 +126,6 @@ mymap.on('pm:cut', (c) => {
     // Create a polygon and add it to allShapes
     valuesShape = L.polygon(polygonCoords);
     allShapes.addCuttedShapes(valuesShape);
-
     // Update cutted element count
     countCuttedElements = addOrRemoveCountOfCutted(true, countCuttedElements, 1);
 });
@@ -152,8 +151,8 @@ function handleShapeCreation(e, shapeType) {
         alert("Unknown shape");
         return;
     }
-
-    allShapes.addElem({ layer: valuesShape, shapeType: shapeType });
+    allShapes.addElem(valuesShape);
+   // allShapes.addElem({ layer: valuesShape, shapeType: shapeType });
     allShapes.idShape(e.layer._leaflet_id);
 
     // Add event listeners for edit and drag
@@ -187,6 +186,28 @@ function updateShape(event, shapeType) {
         allShapes.id.splice(indexValue, 1);
     }
 
+    const shapeData = {
+      id: layerId, 
+      shape_type: shapeType,
+      coordinates: latlngs
+    };
+
+    fetch('http://localhost:3000/api/shapes/'+layerId, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(shapeData)  // Make sure this is valid
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('Shape saved:', data);
+      })
+      .catch(error => {
+        console.error('Error saving shape:', error);
+    });
+
+
     // Create and add new shape
     handleShapeCreation(event, shapeType);
 }
@@ -205,21 +226,23 @@ mymap.on('pm:create', (e) => {
       coordinates: latlngs
     };
 
-
-    fetch('http://localhost:3000/api/shapes', {
+    if(shapeType != 'marker'){
+      fetch('http://localhost:3000/api/shapes', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify(shapeData)  // Make sure this is valid
-    })
-    .then(response => response.json())
-    .then(data => {
+      })
+      .then(response => response.json())
+      .then(data => {
         console.log('Shape saved:', data);
-    })
-    .catch(error => {
+      })
+      .catch(error => {
         console.error('Error saving shape:', error);
-    });
+      });
+    }
+
 
 
     console.log(JSON.stringify(allShapes.elements.map(elem => elem._latlngs)));
@@ -233,6 +256,7 @@ function allFences(marker){
   var shapeFence = false;
   var cuttedFence = false;
 
+  
   for(var i = 0; i < allShapes.cuttedElements.length; i++){
     cuttedFence = allShapes.cuttedElements[i].contains(marker.getLatLng());
     if(cuttedFence === false){
