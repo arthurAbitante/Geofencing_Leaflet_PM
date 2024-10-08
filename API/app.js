@@ -31,11 +31,11 @@ app.get('/', (req, res) => {
 });
 
 app.post('/api/shapes', (req, res) => {
-    const {id, shape_type, coordinates} = req.body;
+    const {id, shape_type, coordinates, cutted} = req.body;
 
-    const sql = 'INSERT INTO shapes (id, shape_type, coordinates) VALUES (?, ?, ?)';
+    const sql = 'INSERT INTO shapes (id, shape_type, coordinates, cutted) VALUES (?, ?, ?, ?)';
 
-    db.query(sql, [id, shape_type, JSON.stringify(coordinates)], (err, result) => {
+    db.query(sql, [id, shape_type, JSON.stringify(coordinates), cutted], (err, result) => {
         if(err){
             console.error('Error inserting data:', err);
             res.status(500).send('Error saving shape data.');
@@ -59,9 +59,9 @@ app.get('/api/shapes', (req, res) => {
 
 app.put('/api/shapes/:id', (req, res) => {
     const {id} = req.params;
-    const {shape_type, coordinates} = req.body;
-    const sql = 'UPDATE shapes SET shape_type = ?, coordinates = ? WHERE id = ?';
-    db.query(sql, [shape_type, JSON.stringify(coordinates), id], (err, result) => {
+    const {shape_type, coordinates, cutted} = req.body;
+    const sql = 'UPDATE shapes SET shape_type = ?, coordinates = ?, cutted =? WHERE id = ?';
+    db.query(sql, [shape_type, JSON.stringify(coordinates), cutted, id], (err, result) => {
         if(err){
             console.error('Error updating shape:', err);
             res.status(500).send('Error updating shape.');

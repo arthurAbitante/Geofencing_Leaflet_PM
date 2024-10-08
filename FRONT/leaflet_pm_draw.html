@@ -43,6 +43,8 @@ mymap.pm.addControls({
   drawPolyline: false
 });
  
+
+
 var shape;
 var countCuttedElements = 0;
 var allShapes = {
@@ -109,6 +111,7 @@ mymap.on('pm:remove', (re) => {
   countCuttedElements = addOrRemoveCountOfCutted(false, countCuttedElements, allShapes.cuttedElements.length);
   allShapes.id.splice(indexValue, 1);
 
+  location.reload(true);
 });
 
 mymap.on('pm:cut', (c) => {
@@ -128,6 +131,31 @@ mymap.on('pm:cut', (c) => {
     allShapes.addCuttedShapes(valuesShape);
     // Update cutted element count
     countCuttedElements = addOrRemoveCountOfCutted(true, countCuttedElements, 1);
+
+    const shapeData = {
+      id: c.layer._leaflet_id, 
+      shape_type: 'polygon',
+      coordinates: polygonCoords,
+      cutted: true
+    };
+
+  
+    fetch('http://localhost:3000/api/shapes', {
+      method: 'POST',
+      headers: {
+          'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(shapeData)  // Make sure this is valid
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('Shape saved:', data);
+    })
+    .catch(error => {
+      console.error('Error saving shape:', error);
+    });
+    
+    location.reload(true);
 });
 
 
@@ -174,6 +202,52 @@ function addShapeEventListeners(layer, shapeType) {
     layer.on('pm:dragend', (de) => updateShape(de, shapeType));
 }
 
+
+function loadShapesFromDB() {
+    fetch('http://localhost:3000/api/shapes')
+    .then(response => response.json())
+    .then(shapes => {
+        shapes.forEach(shape => {
+            // Parse the coordinates (stored as JSON in the database)
+            const coordinates = JSON.parse(shape.coordinates);
+
+            // Add the shape to the map based on its type
+            addShapeCoordinatesToMap(coordinates, shape.shape_type, shape.id);
+        });
+    })
+    .catch(error => {
+        console.error('Error loading shapes from the database:', error);
+    });
+}
+
+// Function to add shapes to the map based on type
+function addShapeCoordinatesToMap(coordinates, shapeType, id) {
+    let layer;
+
+    // Create the correct shape type and add to the map
+    if (shapeType === 'polygon') {
+        layer = L.polygon(coordinates).addTo(mymap);
+    } else if (shapeType === 'rectangle') {
+        layer = L.rectangle(coordinates).addTo(mymap);
+    } else if (shapeType === 'circle') {
+        // Assuming first coordinate is the center, and radius is stored elsewhere
+        const radius = coordinates[0].radius || 500;  // Default radius if not stored
+        layer = L.circle(coordinates[0], { radius }).addTo(mymap);
+    } else if (shapeType === 'marker') {
+        layer = L.marker(coordinates).addTo(mymap);
+    }
+
+    layer._leaflet_id = id;
+    // Store the layer in allShapes if needed
+    allShapes.addElem(layer);
+    allShapes.idShape(layer._leaflet_id);
+}
+
+// Load the shapes when the page is loaded
+document.addEventListener('DOMContentLoaded', loadShapesFromDB);
+
+
+
 // Function to update shape on edit or drag
 function updateShape(event, shapeType) {
     const latlngs = getLatLngs(event.target);
@@ -210,6 +284,8 @@ function updateShape(event, shapeType) {
 
     // Create and add new shape
     handleShapeCreation(event, shapeType);
+
+    location.reload(true);
 }
 
 // Handle shape creation event
@@ -223,7 +299,8 @@ mymap.on('pm:create', (e) => {
     const shapeData = {
       id: e.layer._leaflet_id, 
       shape_type: shapeType,
-      coordinates: latlngs
+      coordinates: latlngs,
+      cutted: false
     };
 
     if(shapeType != 'marker'){
@@ -243,7 +320,7 @@ mymap.on('pm:create', (e) => {
       });
     }
 
-
+    location.reload(true);
 
     console.log(JSON.stringify(allShapes.elements.map(elem => elem._latlngs)));
 });
