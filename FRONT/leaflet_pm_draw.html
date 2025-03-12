@@ -302,6 +302,7 @@ mymap.on('pm:create', (e) => {
       coordinates: latlngs,
       cutted: false
     };
+    console.log(shapeData);
 
     if(shapeType != 'marker'){
       fetch('http://localhost:3000/api/shapes', {
@@ -320,7 +321,7 @@ mymap.on('pm:create', (e) => {
       });
     }
 
-    location.reload(true);
+  //  location.reload(true);
 
     console.log(JSON.stringify(allShapes.elements.map(elem => elem._latlngs)));
 });
